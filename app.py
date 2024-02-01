@@ -2,11 +2,12 @@ import streamlit as st
 import cv2
 import numpy as np
 import datetime
-# serve per scaricà il modello da hf e utilizzarlo
 from transformers import pipeline
 from PIL import Image
 from gpt4all import GPT4All
+# from bark import SAMPLE_RATE, generate_audio, preload_models
 
+# preload_models()
 
 def main():
     st.title("✨ Image Storyteller by Gab")
@@ -18,7 +19,11 @@ def main():
 
     # Generate story button
     if st.button("Generate Story"):
-        generate_story(selected_image)
+        generated_story = generate_story(selected_image)
+        print(generated_story)
+        # generated_audio = generate_audio(generated_story) # da testare
+        # st.audio(generated_audio, sample_rate=SAMPLE_RATE)
+        
 
 def run_webcam():
     picture = st.camera_input("Take a picture")
@@ -64,22 +69,28 @@ def img2text(filename):
 
 def generate_story(image):
     if image:
-        scenario = img2text(image)
-        st.write("So this is what I am seeing.. " + scenario)
-        st.write("Alright, I will generate a story for you based on that..")
-        # system_template = "Sai raccontare le storie; traduci in italiano l'input e genera una breve storia in italiano basandoti sull'input dato, incentrando maggiormente la storia sull'input. La storia generata non deve superare le 30 parole."
-        system_template = "You are a story teller; You can generate a short story based on a fascinating narrative, mostly focused on the input. The story should not be more than 30 words."
-        # prompt_template = "UTENTE: Ecco l'input da cui partire la storia: {0}\nLA STORIA: "
-        prompt_template = "USER: Here's an input to start the story with: {0}\nASSISTANT: "
-        llm = GPT4All(
-            "C:/Users/eguogab/AppData/Local/nomic.ai/GPT4All/mistral-7b-instruct-v0.1.Q4_0.gguf")
-        with llm.chat_session(system_template, prompt_template):
-            story = llm.generate(scenario)
-            # print(story)
-            st.success(story)
+        with st.spinner('Generating...'):
+            scenario = img2text(image)
+            st.write("So this is what I am seeing.. " + scenario)
+            st.write("Alright, I will generate a story for you based on that..")
+            # system_template = "Sai raccontare le storie; traduci in italiano l'input e genera una breve storia in italiano basandoti sull'input dato, incentrando maggiormente la storia sull'input. La storia generata non deve superare le 30 parole."
+            system_template = "You are a story teller; You can generate a short story based on a fascinating narrative; Mostly focused on the input; Do not put any name in it. The story should not be more than 30 words."
+            # prompt_template = "UTENTE: Ecco l'input da cui partire la storia: {0}\nLA STORIA: "
+            prompt_template = "USER: Here's the input to start the story with: {0}\nASSISTANT: "
+            llm = GPT4All(
+                "C:/Users/eguogab/AppData/Local/nomic.ai/GPT4All/mistral-7b-instruct-v0.1.Q4_0.gguf")
+            with llm.chat_session(system_template, prompt_template):
+                story = llm.generate(scenario)
+                # print(story)
+
+                st.success(story)
+                return story
     else:
         st.warning("Please add an image first")
 
+# def generate_audio(story):
+#     audio_array = generate_audio(story)
+#     return audio_array
 
 if __name__ == "__main__":
     main()
