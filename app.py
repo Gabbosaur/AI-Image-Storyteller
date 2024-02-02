@@ -5,9 +5,10 @@ import datetime
 from transformers import pipeline
 from PIL import Image
 from gpt4all import GPT4All
-# from bark import SAMPLE_RATE, generate_audio, preload_models
+from bark import SAMPLE_RATE, generate_audio, preload_models
+from scipy.io.wavfile import write as write_wav
 
-# preload_models()
+preload_models()
 
 def main():
     st.title("✨ Image Storyteller by Gab")
@@ -21,9 +22,12 @@ def main():
     if st.button("Generate Story"):
         generated_story = generate_story(selected_image)
         print(generated_story)
-        # generated_audio = generate_audio(generated_story) # da testare
-        # st.audio(generated_audio, sample_rate=SAMPLE_RATE)
-        
+
+        with st.spinner('Generating audio...'):
+            audio_array = generate_audio(generated_story)
+            write_wav("bark_generation.wav", SAMPLE_RATE, audio_array)
+            st.audio("bark_generation.wav")
+
 
 def run_webcam():
     picture = st.camera_input("Take a picture")
@@ -38,7 +42,6 @@ def run_webcam():
         filename = f"captured_image_{timestamp}.jpg"
         save_path = "pictures/" + filename
         cv2.imwrite(save_path, img_array)
-        # save_as_jpeg(img_array, save_path)
         return pil_img
 
 
@@ -53,17 +56,10 @@ def run_image_upload():
         return img
 
 
-def save_as_jpeg(frame, filename):
-    # Save the frame as a JPEG image
-    cv2.imwrite(filename, frame)
-
-
 def img2text(filename):
     image_to_text = pipeline(
         "image-to-text", model="Salesforce/blip-image-captioning-base")
     text = image_to_text(filename)[0]["generated_text"]
-
-    # print(text)
     return text
 
 
@@ -87,10 +83,6 @@ def generate_story(image):
                 return story
     else:
         st.warning("Please add an image first")
-
-# def generate_audio(story):
-#     audio_array = generate_audio(story)
-#     return audio_array
 
 if __name__ == "__main__":
     main()
