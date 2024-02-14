@@ -23,7 +23,7 @@ def main():
         generated_story = generate_story(selected_image)
         print(generated_story)
 
-        with st.spinner('Generating audio...'):
+        with st.spinner('Generating audio... (this might take a while. Check progress on terminal)'):
             audio_array = generate_audio(generated_story)
             write_wav("bark_generation.wav", SAMPLE_RATE, audio_array)
             st.audio("bark_generation.wav")
@@ -72,9 +72,8 @@ def generate_story(image):
             # system_template = "Sai raccontare le storie; traduci in italiano l'input e genera una breve storia in italiano basandoti sull'input dato, incentrando maggiormente la storia sull'input. La storia generata non deve superare le 30 parole."
             system_template = "You are a story teller; You can generate a short story based on a fascinating narrative; Mostly focused on the input; Do not put any name in it. The story should not be more than 30 words."
             # prompt_template = "UTENTE: Ecco l'input da cui partire la storia: {0}\nLA STORIA: "
-            prompt_template = "USER: Here's the input to start the story with: {0}\nASSISTANT: "
-            llm = GPT4All(
-                "C:/Users/eguogab/AppData/Local/nomic.ai/GPT4All/mistral-7b-instruct-v0.1.Q4_0.gguf")
+            prompt_template = "USER: Here's the input to start the story with: {0}\nASSISTANT:"
+            llm = GPT4All("mistral-7b-instruct-v0.1.Q4_0.gguf")
             with llm.chat_session(system_template, prompt_template):
                 story = llm.generate(scenario)
                 # print(story)
