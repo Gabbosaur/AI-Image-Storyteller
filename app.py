@@ -32,7 +32,7 @@ def main():
     )
 
     # Select the audio generation model
-    audioModel = st.sidebar.selectbox("Select text2speech model", ["LocalBark", "ELabsAPI"], index=0)
+    audioModel = st.sidebar.selectbox("Select text2speech model", ["LocalBark", "ELabsAPI", "None"], index=2)
 
     # Generate story
     if st.button("Generate Story"):
@@ -49,6 +49,9 @@ def main():
         elif audioModel == "ELabsAPI":
             with st.spinner('Generating audio...'):
                 generate_audio_with_api(generated_story, selected_language)
+
+        elif audioModel == "None":
+            pass
 
 
 def run_webcam():
@@ -92,7 +95,7 @@ def generate_story(image, language):
             st.write("So this is what I am seeing.. " + scenario)
             st.write("Alright, I will generate a story in " + language + " for you based on that..")
             if language == "English":
-                system_template = "You are a story teller; You can generate a short story based on a fascinating narrative; Mostly focused on the input; Do not put any name in it. The story should not be more than 30 words."
+                system_template = "You are a story teller; You can generate a short story based on a fascinating and uplifting narrative with an interesting plot twist; Mostly focused on the input; Do not put any name in it. The story should not be more than 50 words."
                 prompt_template = "USER: Here's the input to start the story with: {0}\nASSISTANT:"
             elif language == "Italian":
                 system_template = "Sai raccontare le storie; traduci in italiano l'input e genera una breve storia in italiano basandoti sull'input dato, incentrando maggiormente la storia sull'input. Non menzionare nomi propri. La storia generata non deve superare le 30 parole."
@@ -108,7 +111,7 @@ def generate_story(image, language):
 
 def generate_audio_with_api(message, language):
     if language == "English":
-        voice_id = "21m00Tcm4TlvDq8ikWAM"
+        voice_id = "zcAOhNBS3c14rBihAFp1" # "21m00Tcm4TlvDq8ikWAM"
     elif language == "Italian":
         voice_id = "pNInz6obpgDQGcFmaJgB"
     url = "https://api.elevenlabs.io/v1/text-to-speech/" + voice_id
