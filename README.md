@@ -2,6 +2,8 @@
 You take a picture and the AI will tell you story about it :)
 
 # Installation
+Python version ≥ 3.10
+
 Clone the repo
 ```bash
 git clone https://github.com/Gabbosaur/AI-Image-Storyteller.git
