@@ -10,11 +10,13 @@ from PIL import Image
 from gpt4all import GPT4All
 from bark import SAMPLE_RATE, generate_audio, preload_models
 from scipy.io.wavfile import write as write_wav
+from langchain_ollama import ChatOllama
+from langchain_core.messages import HumanMessage, SystemMessage
 
 load_dotenv(find_dotenv())
 EL_LABS_API_KEY = os.getenv('EL_LABS_API_KEY')
+OLLAMA_BASE_URL = os.getenv('OLLAMA_BASE_URL')
 # preload_models()
-
 
 def main():
     st.title("✨ Image Storyteller by Gab")
@@ -34,11 +36,20 @@ def main():
     # Select the audio generation model
     audioModel = st.sidebar.selectbox("Select text2speech model", ["LocalBark", "ELabsAPI", "None"], index=2)
 
+    # Select the LLM platform
+    llmPlatform = st.sidebar.selectbox("Select LLM platform", ["GPT4ALL", "Ollama"], index=1)
+
     # Generate story
     if st.button("Generate Story"):
         selected_language = language
-        generated_story = generate_story(selected_image, selected_language)
+        if llmPlatform == "GPT4ALL":
+            print("✨ Generating story with GPT4ALL...")
+            generated_story = generate_story_with_gpt4all(selected_image, selected_language)
+        elif llmPlatform == "Ollama":
+            print("✨ Generating story through Ollama...")
+            generated_story = generate_story_with_chatOllama(selected_image, selected_language)
         print(generated_story)
+        st.success(generated_story)
 
 
         if audioModel == "LocalBark":
@@ -83,15 +94,51 @@ def run_image_upload():
 
 def img2text(filename):
     image_to_text = pipeline(
-        "image-to-text", model="Salesforce/blip-image-captioning-base")
+        "image-to-text", model="Salesforce/blip-image-captioning-large")
+        # "image-to-text", model="Salesforce/blip-image-captioning-base")
     text = image_to_text(filename)[0]["generated_text"]
     return text
 
+def remove_arafed(text):
+    cleaned_text = text.replace("arafed", "").replace("araffed", "")
+    cleaned_text = ' '.join(cleaned_text.split())
+    return cleaned_text
 
-def generate_story(image, language):
+def generate_story_with_chatOllama(image, language):
     if image:
         with st.spinner('Generating...'):
             scenario = img2text(image)
+            scenario = remove_arafed(scenario)
+            st.write("So this is what I am seeing... ")
+            st.info(scenario)
+            st.write("Alright, I will generate a story in " + language + " for you based on that..")
+            # Instantiate the ChatOllama object
+            llm = ChatOllama(base_url=OLLAMA_BASE_URL, model="mistral:7b", temperature=1)
+            # llm = ChatOllama(base_url="http://10.8.0.106:50000", model="llama3.2:3b", temperature=1)
+            if language == "English":
+                # Create the prompt template with the required data
+                messages = [
+                    SystemMessage(content="As a master storyteller and motivational speaker, your task is to craft captivating and inspiring stories based on a given simple phrase. The stories should be concise, not exceeding 100 words, and should not contain any names. Your stories should have the power to ignite people's imagination and motivate them to constantly improve themselves. Remember, the key is to create a brief yet impactful narrative that leaves a lasting impression. Begin now."),
+                    HumanMessage(content="Here's the phrase: " + scenario)
+                ]
+            elif language == "Italian":
+                # Create the prompt template with the required data
+                messages = [
+                    SystemMessage(content="Come un maestro di storia e speaker motivante, il tuo compito è creare storie innovative e inspiranti basate su una semplice frase. Le storie devono essere brevi, non superare i 100 parole, e non contenere nomi propri. Le storie devono stimolare l'immaginazione delle persone e motivarle costantemente a migliorare loro stessi. Ricorda, la chiave è di creare una narrativa corta ma impattante che lasci una buona impressione."),
+                    HumanMessage(content="Ecco la frase: " + scenario)
+                ]
+
+            # Get the response
+            story = llm.invoke(messages)
+            story = story.content
+
+    return story
+
+def generate_story_with_gpt4all(image, language):
+    if image:
+        with st.spinner('Generating...'):
+            scenario = img2text(image)
+            scenario = remove_arafed(scenario)
             st.write("So this is what I am seeing.. " + scenario)
             st.write("Alright, I will generate a story in " + language + " for you based on that..")
             if language == "English":
@@ -103,7 +150,6 @@ def generate_story(image, language):
             llm = GPT4All("mistral-7b-instruct-v0.1.Q4_0.gguf")
             with llm.chat_session(system_template, prompt_template):
                 story = llm.generate(scenario)
-                st.success(story)
                 return story
     else:
         st.warning("Please add an image first")
