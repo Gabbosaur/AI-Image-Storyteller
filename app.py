@@ -49,7 +49,8 @@ def main():
             print("✨ Generating story through Ollama...")
             generated_story = generate_story_with_chatOllama(selected_image, selected_language)
         print(generated_story)
-        st.success(generated_story)
+        if generated_story:
+            st.success(generated_story)
 
 
         if audioModel == "LocalBark":
@@ -112,25 +113,31 @@ def generate_story_with_chatOllama(image, language):
             st.write("So this is what I am seeing... ")
             st.info(scenario)
             st.write("Alright, I will generate a story in " + language + " for you based on that..")
-            # Instantiate the ChatOllama object
-            llm = ChatOllama(base_url=OLLAMA_BASE_URL, model="mistral:7b", temperature=1)
-            # llm = ChatOllama(base_url="http://10.8.0.106:50000", model="llama3.2:3b", temperature=1)
-            if language == "English":
-                # Create the prompt template with the required data
-                messages = [
-                    SystemMessage(content="As a master storyteller and motivational speaker, your task is to craft captivating and inspiring stories based on a given simple phrase. The stories should be concise, not exceeding 100 words, and should not contain any names. Your stories should have the power to ignite people's imagination and motivate them to constantly improve themselves. Remember, the key is to create a brief yet impactful narrative that leaves a lasting impression. Begin now."),
-                    HumanMessage(content="Here's the phrase: " + scenario)
-                ]
-            elif language == "Italian":
-                # Create the prompt template with the required data
-                messages = [
-                    SystemMessage(content="Come un maestro di storia e speaker motivante, il tuo compito è creare storie innovative e inspiranti basate su una semplice frase. Le storie devono essere brevi, non superare i 100 parole, e non contenere nomi propri. Le storie devono stimolare l'immaginazione delle persone e motivarle costantemente a migliorare loro stessi. Ricorda, la chiave è di creare una narrativa corta ma impattante che lasci una buona impressione."),
-                    HumanMessage(content="Ecco la frase: " + scenario)
-                ]
 
-            # Get the response
-            story = llm.invoke(messages)
-            story = story.content
+            try:
+                # Instantiate the ChatOllama object
+                llm = ChatOllama(base_url=OLLAMA_BASE_URL, model="mistral:7b", temperature=1)
+                # llm = ChatOllama(base_url="http://10.8.0.106:50000", model="llama3.2:3b", temperature=1)
+                if language == "English":
+                    # Create the prompt template with the required data
+                    messages = [
+                        SystemMessage(content="As a master storyteller and motivational speaker, your task is to craft captivating and inspiring stories based on a given simple phrase. The stories should be concise, not exceeding 100 words, and should not contain any names. Your stories should have the power to ignite people's imagination and motivate them to constantly improve themselves. Remember, the key is to create a brief yet impactful narrative that leaves a lasting impression. Begin now."),
+                        HumanMessage(content="Here's the phrase: " + scenario)
+                    ]
+                elif language == "Italian":
+                    # Create the prompt template with the required data
+                    messages = [
+                        SystemMessage(content="As an Italian-speaking AI, your role is to act as a history Italian teacher and motivational speaker. Your task is to create innovative and inspiring stories based on a simple phrase in Italian. The stories must be translated to Italian and should be concise, not exceeding 100 words, and should not contain proper names. They should stimulate people's imagination and consistently motivate them to improve themselves. Remember, the key is to create a short yet impactful narrative that leaves a lasting impression and must be in Italian language. Please don't make a numbered list. Don't put any English texts."),
+                        HumanMessage(content="Ecco la frase: " + scenario)
+                    ]
+
+                # Get the response
+                story = llm.invoke(messages)
+                story = story.content
+            except Exception as e:
+                print(f"An error occurred while generating the story: {e}")
+                st.error("An error occurred while generating the story.")
+                return ""
 
     return story
 
