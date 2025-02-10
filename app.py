@@ -4,6 +4,7 @@ import numpy as np
 import datetime
 import os
 import requests
+from groq import Groq
 from dotenv import load_dotenv, find_dotenv
 from transformers import pipeline
 from PIL import Image
@@ -12,10 +13,13 @@ from bark import SAMPLE_RATE, generate_audio, preload_models
 from scipy.io.wavfile import write as write_wav
 from langchain_ollama import ChatOllama
 from langchain_core.messages import HumanMessage, SystemMessage
+from elevenlabs import VoiceSettings
+from elevenlabs.client import ElevenLabs
 
 load_dotenv(find_dotenv())
 EL_LABS_API_KEY = os.getenv('EL_LABS_API_KEY')
 OLLAMA_BASE_URL = os.getenv('OLLAMA_BASE_URL')
+GROQ_API_KEY = os.getenv('GROQ_API_KEY')
 # preload_models()
 
 def main():
@@ -30,14 +34,14 @@ def main():
 
     # Select the language
     language = st.sidebar.selectbox(
-        "Select Language", ("English", "Italian"), index=0, disabled=True
+        "Select Language", ("English", "Italian"), index=0, disabled=False
     )
 
     # Select the audio generation model
     audioModel = st.sidebar.selectbox("Select text2speech model", ["LocalBark", "ELabsAPI", "None"], index=2)
 
     # Select the LLM platform
-    llmPlatform = st.sidebar.selectbox("Select LLM platform", ["GPT4ALL", "Ollama"], index=1)
+    llmPlatform = st.sidebar.selectbox("Select LLM platform", ["GPT4ALL", "Ollama", "Groq"], index=2)
 
     # Generate story
     if st.button("Generate Story"):
@@ -48,6 +52,9 @@ def main():
         elif llmPlatform == "Ollama":
             print("✨ Generating story through Ollama...")
             generated_story = generate_story_with_chatOllama(selected_image, selected_language)
+        elif llmPlatform == "Groq":
+            print("✨ Generating story through Groq...")
+            generated_story = generate_story_with_groq(selected_image, selected_language)
         print(generated_story)
         if generated_story:
             st.success(generated_story)
@@ -161,35 +168,70 @@ def generate_story_with_gpt4all(image, language):
     else:
         st.warning("Please add an image first")
 
+def generate_story_with_groq(image, language):
+    if image:
+        with st.spinner('Generating...'):
+            scenario = img2text(image)
+            scenario = remove_arafed(scenario)
+            st.write("So this is what I am seeing.. " + scenario)
+            st.write("Alright, I will generate a story in " + language + " for you based on that..")
+
+            if language == "English":
+                system_prompt = "As a master storyteller and motivational speaker, your task is to craft captivating and inspiring stories based on a given simple phrase. The stories should be concise, not exceeding 100 words, and should not contain any names. Your stories should have the power to ignite people's imagination and motivate them to constantly improve themselves. Remember, the key is to create a brief yet impactful narrative that leaves a lasting impression. Begin now."
+            elif language == "Italian":
+                system_prompt = "In qualità di maestro narratore e oratore motivazionale, il tuo compito è creare storie coinvolgenti e ispiratrici basate su una semplice frase fornita. Le storie devono essere concise, non superare le 100 parole e non contenere nomi. Devono avere il potere di accendere l'immaginazione delle persone e motivarle a migliorarsi continuamente. Ricorda, la chiave è creare un racconto breve ma incisivo, capace di lasciare un'impressione duratura. Comincia ora."
+            client = Groq(
+                api_key=GROQ_API_KEY,
+            )
+
+            chat_completion = client.chat.completions.create(
+                messages=[
+                    {
+                        "role": "system",
+                        "content": system_prompt
+                    },
+                    {
+                        "role": "user",
+                        "content": "Here's the scenario: " + scenario,
+                    }
+                ],
+                model="llama-3.3-70b-versatile",
+            )
+            return chat_completion.choices[0].message.content
+
 
 def generate_audio_with_api(message, language):
     if language == "English":
-        voice_id = "zcAOhNBS3c14rBihAFp1" # "21m00Tcm4TlvDq8ikWAM"
+        voice_id = "NOpBlnGInO9m6vDvFkFC"
     elif language == "Italian":
-        voice_id = "pNInz6obpgDQGcFmaJgB"
-    url = "https://api.elevenlabs.io/v1/text-to-speech/" + voice_id
+        voice_id = "uScy1bXtKz8vPzfdFsFw"
 
-    payload = {
-        "model_id": "eleven_monolingual_v1",
-        "text": message,
-        "voice_settings": {
-            "similarity_boost": 0,
-            "stability": 0,
-            "style": 0,
-            "use_speaker_boost": True
-        }
-    }
-    headers = {"Content-Type": "application/json",
-               'xi-api-key': EL_LABS_API_KEY,
-               'accept': 'audio/mpeg'}
-
-    response = requests.request("POST", url, json=payload, headers=headers)
-
-    if response.status_code == 200 and response.content:
-        with open('gen-audio.mp3', 'wb') as f:
-            f.write(response.content)
-        st.audio('gen-audio.mp3')
-        return response.content
+    client = ElevenLabs(
+        api_key=EL_LABS_API_KEY,
+    )
+    response = client.text_to_speech.convert(
+        voice_id=voice_id,
+        # voice_id="pNInz6obpgDQGcFmaJgB", # Adam pre-made voice
+        output_format="mp3_22050_32",
+        text=message,
+        model_id="eleven_turbo_v2_5", # use the turbo model for low latency
+        voice_settings=VoiceSettings(
+            stability=0.0,
+            similarity_boost=1.0,
+            style=0.0,
+            use_speaker_boost=True,
+        ),
+    )
+    # uncomment the line below to play the audio back
+    # play(response)
+    # Generating a unique file name for the output MP3 file
+    save_file_path = "gen-audio.mp3"
+    # Writing the audio to a file
+    with open(save_file_path, "wb") as f:
+        for chunk in response:
+            if chunk:
+                f.write(chunk)
+    st.audio("gen-audio.mp3")
 
 
 if __name__ == "__main__":
